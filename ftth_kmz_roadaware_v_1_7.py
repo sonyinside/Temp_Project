@@ -21,6 +21,7 @@ Diuji pada Python 3.10–3.12 Windows. Jika modul belum ada, auto-install.
 """
 
 import os, sys, math, json, time, subprocess, importlib, zipfile, io, csv, random
+from pathlib import Path
 from typing import List, Tuple, Dict, Any
 
 # ---------------- Auto-install ----------------
@@ -45,6 +46,15 @@ from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import unary_union
 from pyproj import Transformer
 import simplekml
+
+# ---------------- Cache config ----------------
+CACHE_DIR = Path(os.getenv("OVERPASS_CACHE_DIR", Path(__file__).resolve().parent / ".overpass_cache"))
+CACHE_ENABLED = os.getenv("OVERPASS_CACHE_DISABLE", "").lower() not in {"1", "true", "yes"}
+if CACHE_ENABLED:
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        CACHE_ENABLED = False
 
 # ---------------- CONFIG ----------------
 OLT_NAME = "OLT"
@@ -97,6 +107,11 @@ def to_wgs(x: float, y: float) -> Tuple[float,float]:
     return lon, lat
 
 
+def _cache_file_name(lat: float, lon: float, radius_m: float) -> Path:
+    key = f"{lat:.6f}_{lon:.6f}_{radius_m:.1f}.json"
+    return CACHE_DIR / key
+
+
 def overpass_query(lat: float, lon: float, radius_m: float) -> Dict[str, Any]:
     # Highways and buildings within radius
     q = f"""
@@ -111,6 +126,20 @@ def overpass_query(lat: float, lon: float, radius_m: float) -> Dict[str, Any]:
     >; out skel qt;
     """
     url = "https://overpass-api.de/api/interpreter"
+
+    cache_file: Path | None = None
+    if CACHE_ENABLED:
+        cache_file = _cache_file_name(lat, lon, radius_m)
+        if cache_file.exists():
+            try:
+                with cache_file.open("r", encoding="utf-8") as fh:
+                    return json.load(fh)
+            except Exception:
+                try:
+                    cache_file.unlink()
+                except Exception:
+                    pass
+
     for attempt in range(5):
         try:
             r = requests.post(url, data={"data": q}, timeout=90)
@@ -118,7 +147,14 @@ def overpass_query(lat: float, lon: float, radius_m: float) -> Dict[str, Any]:
                 time.sleep(2 + attempt)
                 continue
             r.raise_for_status()
-            return r.json()
+            data = r.json()
+            if CACHE_ENABLED and cache_file is not None:
+                try:
+                    with cache_file.open("w", encoding="utf-8") as fh:
+                        json.dump(data, fh)
+                except Exception:
+                    pass
+            return data
         except Exception:
             time.sleep(2 + attempt)
     raise RuntimeError("Overpass request failed repeatedly")
