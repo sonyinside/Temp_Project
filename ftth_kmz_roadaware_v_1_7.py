@@ -250,23 +250,23 @@ def main():
 
     kml = simplekml.Kml()
     # Styles
-    st_olt  = kml.newstyle()
+    st_olt  = simplekml.Style()
     st_olt.iconstyle.icon.href = "http://maps.google.com/mapfiles/kml/shapes/star.png"
     st_olt.iconstyle.scale = 1.2
 
-    st_odc  = kml.newstyle()
+    st_odc  = simplekml.Style()
     st_odc.iconstyle.icon.href = "http://maps.google.com/mapfiles/kml/shapes/placemark_square.png"
     st_odc.iconstyle.scale = 1.1
 
-    st_odp  = kml.newstyle()
+    st_odp  = simplekml.Style()
     st_odp.iconstyle.icon.href = "http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png"
     st_odp.iconstyle.scale = 0.9
 
-    st_feeder = kml.newstyle()
+    st_feeder = simplekml.Style()
     st_feeder.linestyle.color = kml_color_abgr(COLOR_FEEDER)
     st_feeder.linestyle.width = 3
 
-    st_distri = kml.newstyle()
+    st_distri = simplekml.Style()
     st_distri.linestyle.color = kml_color_abgr(COLOR_DISTRI)
     st_distri.linestyle.width = 2
 
